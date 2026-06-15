@@ -1,5 +1,55 @@
 # Changelog
 
+<a id='changelog-1.52.0'></a>
+
+## 1.52.0 — 2026-06-15
+
+### Added
+
+- `ggshield ai discover --history` backfills historical MCP tool calls to GitGuardian (parsed from `~/.claude/projects/*/*.jsonl`). The API deduplicates events via idempotency keys, so reruns are safe.
+
+- Improved MCP server name detection for more human-readable names.
+
+- `ggshield honeytoken plant` reconciles this machine's honeytokens with
+  GitGuardian and writes or removes the decoy AWS credential profiles on disk. Existing comments and file permissions are preserved.
+
+- `ggshield install -t <agent>` now verifies after installing the hooks that ggshield can authenticate to GitGuardian, and warns with remediation steps if it cannot. On macOS, this also triggers the Keychain authorization prompt at a time the user can answer it, instead of inside a non-interactive agent-spawned hook.
+
+- Standalone Linux artifacts are now also built for ARM (aarch64): tar.gz
+  archive, .deb and .rpm packages.
+
+### Changed
+
+- Display an additional warning when the `.gitguardian.yaml` configuration file is missing the `version` field.
+
+- `ggshield auth login` now requests broader default scopes (`scan`, `honeytokens:check`, `endpoints:send`). If any scope is not granted, a warning is printed but login still succeeds.
+
+- `ggshield install -t <agent>` now pins the AI hook to the absolute path of the ggshield that ran the install, instead of a bare `ggshield`. The hook runs with a PATH that differs from the user's shell and across launch contexts, so on machines with several ggshield installations a bare command could resolve to a different binary than the one the user authenticated with. The stable launcher path is used (symlinks are not resolved) so it survives version upgrades; the bare command remains a fallback when the path cannot be determined.
+
+- `ggshield plugin list` shows a verified plugin simply as `signed` instead of
+  `signed (<signing-repository>)`. The signing identity is still recorded in the plugin
+  manifest for auditing.
+
+### Fixed
+
+- AI hooks are debounced when an agent calls the same hook multiple times.
+
+- OAuth local server now uses OS-assigned port (port 0) instead of the hardcoded range 29170-29998, eliminating port conflicts when running multiple ggshield instances or other tools.
+
+- `ggshield plugin uninstall` no longer crashes with a raw `PermissionError` when plugin files cannot be removed. Read-only entries are now fixed automatically, and files owned by another user (e.g. residue from a legacy `sudo` install) produce a clear remediation message instead of a traceback.
+
+- The AI hook (`ggshield secret scan ai-hook`) no longer crashes when it cannot authenticate or reach GitGuardian (e.g. when the API token is stored in the macOS Keychain and is not readable from an agent-spawned process). It now allows the action and warns the user through the agent that the action was NOT scanned, with remediation steps.
+
+- AI hook: secrets in prompts submitted to GitHub Copilot CLI are now blocked before they reach the model. The prompt event was not recognized under Copilot CLI's native `userPromptSubmitted` name, and the inherited `{"continue": false}` output is ignored on the prompt event, so prompts containing secrets were let through. ggshield now maps the event and emits `{"decision": "block"}`, which Copilot CLI honors to cancel the prompt.
+
+- Ignored secrets (for example secrets on context or deleted lines of a patch) no longer appear in plaintext when they show up in the context lines of another displayed secret.
+
+- `ggshield plugin install` no longer fails with "failed to refresh TUF metadata" on
+  locked-down or proxied networks (most often seen on Windows). Plugin signatures are
+  now always verified against the sigstore trust root bundled with ggshield's
+  dependencies rather than refreshing TUF metadata over the network. Plugin identity is
+  still fully enforced; only trust-root freshness now tracks the pinned sigstore version.
+
 <a id='changelog-1.51.0'></a>
 
 ## 1.51.0 — 2026-05-26
