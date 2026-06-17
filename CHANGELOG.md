@@ -1,5 +1,23 @@
 # Changelog
 
+<a id='changelog-1.52.2'></a>
+
+## 1.52.2 — 2026-06-17
+
+### Added
+
+- Install and uninstall scripts under `scripts/install/`: a one-line `curl | bash` (Linux/macOS) and `irm | iex` (Windows) installer for the standalone ggshield build that authenticates and optionally installs plugins, plus a matching uninstaller that removes the install it created.
+
+### Changed
+
+- Clarified the description of the `ggshield honeytoken plant` command.
+
+- Widened the `marshmallow` dependency constraint to `>=3.18,<5`, so ggshield is now compatible with marshmallow 4. This unblocks environments (such as nixpkgs) that ship marshmallow 4.
+
+### Fixed
+
+- macOS: `ggshield machine scan` is no longer several times slower than on other platforms. The signed launcher now carries the `com.apple.security.cs.allow-jit` entitlement, so the scanner's PCRE2 JIT works under the hardened runtime instead of silently falling back to the interpreter.
+
 <a id='changelog-1.52.1'></a>
 
 ## 1.52.1 — 2026-06-16
