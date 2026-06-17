@@ -14,8 +14,9 @@ fi
 choco_nupkg=$1
 
 # push to chocolatey
+# --debug --verbose: the server returns only an opaque 409, so capture full client output for diagnosis. GitHub Actions masks the API key.
 set +e
-output=$(choco push "$choco_nupkg" --source https://push.chocolatey.org/ --api-key "$CHOCOLATEY_API_KEY" 2>&1)
+output=$(choco push "$choco_nupkg" --source https://push.chocolatey.org/ --api-key "$CHOCOLATEY_API_KEY" --debug --verbose 2>&1)
 status=$?
 set -e
 
@@ -24,7 +25,7 @@ echo "$output"
 
 # `choco push` returns 409 when the version already exists in Chocolatey's system,
 # including "pending"/"rejected" moderation states that are hidden from the public
-# feed — re-pushing the same version then always fails. See END-315.
+# feed — re-pushing the same version then always fails.
 if grep -qiE '409|conflict|already exists' <<<"$output"; then
     nupkg_name=$(basename "$choco_nupkg")
     version=${nupkg_name#ggshield.}
