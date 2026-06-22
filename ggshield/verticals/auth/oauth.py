@@ -18,6 +18,7 @@ from ggshield.core.client import (
     create_client,
     create_client_from_config,
     create_session,
+    safe_response_json,
 )
 from ggshield.core.config import Config, InstanceConfig
 from ggshield.core.errors import APIKeyCheckError, UnexpectedError
@@ -363,7 +364,7 @@ class OAuthClient:
         ).get(endpoint="token")
         if not response.ok:
             raise OAuthError("The created token is invalid.")
-        return response.json()
+        return safe_response_json(response)
 
     def _save_token(self, api_token_data: Dict[str, Any]) -> None:
         """

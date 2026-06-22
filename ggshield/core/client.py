@@ -1,7 +1,7 @@
 import logging
 import os
 from enum import Enum
-from typing import Optional, Union
+from typing import Any, Optional, Union
 
 import requests
 import urllib3
@@ -167,26 +167,41 @@ def create_session(
     return session
 
 
+def _non_json_error(
+    url: Optional[str], exc: requests.exceptions.JSONDecodeError
+) -> UnexpectedError:
+    """Build a clear error for a non-JSON body, with a snippet of what came back."""
+    snippet = " ".join((getattr(exc, "doc", "") or "").split())[:100]
+    message = (
+        f"Unexpected non-JSON response from {url}. Check your instance URL settings."
+    )
+    if snippet:
+        message += f"\nResponse body: {snippet}"
+    return UnexpectedError(message)
+
+
 def safe_api_tokens(client: GGClient) -> Union[APITokensResponse, Detail]:
     """Call GGClient.api_tokens() but turn a non-JSON 2xx body into a clean error
     instead of letting a raw JSONDecodeError escape.
 
     pygitguardian's api_tokens() calls resp.json() unconditionally when resp.ok;
     a wrong instance URL can answer a 2xx with the dashboard SPA's HTML, which
-    otherwise crashed callers with an opaque traceback. Mirrors the non-JSON
-    hardening already applied to the auth-login token-claim path.
+    otherwise crashed callers with an opaque traceback.
     """
     try:
         return client.api_tokens()
     except requests.exceptions.JSONDecodeError as exc:
-        snippet = " ".join((getattr(exc, "doc", "") or "").split())[:100]
-        message = (
-            f"Unexpected non-JSON response from {client.base_uri}. "
-            "Check your instance URL settings."
-        )
-        if snippet:
-            message += f"\nResponse body: {snippet}"
-        raise UnexpectedError(message) from exc
+        raise _non_json_error(client.base_uri, exc) from exc
+
+
+def safe_response_json(response: requests.Response) -> Any:
+    """Parse a JSON response body, raising a clean UnexpectedError that names the
+    instance URL instead of letting a raw JSONDecodeError escape when the body is
+    not JSON (e.g. the dashboard SPA's HTML served on a wrong instance URL)."""
+    try:
+        return response.json()
+    except requests.exceptions.JSONDecodeError as exc:
+        raise _non_json_error(response.url, exc) from exc
 
 
 def check_client_api_key(client: GGClient, required_scopes: set[TokenScope]) -> None:
